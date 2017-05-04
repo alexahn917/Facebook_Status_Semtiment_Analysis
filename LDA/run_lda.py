@@ -27,12 +27,16 @@ def main():
     n_samples = len(X)
 
     # vectorize
-    X_trans, topics = fit_lda(X, n_features, n_topics, n_top_words, n_samples)
+    X_trans, topics, topic_components= fit_lda(X, n_features, n_topics, n_top_words, n_samples)
     #fit_nmf(X, n_features, n_topics, n_top_words, n_samples)
 
     # names
-    column_names = ["num_reactions", "num_comments", "num_shares", "num_likes", "num_loves", "num_wows", "num_hahas", "num_sads", "num_angrys"]
-    topic_names = ["Family", "Urgent", "Offence", "School Crime", "Police/Crime/Satire", "Donald Trump", "Teenage Abortion", "Marriage", "Crime witness", "Attack/Terrorism", "Hilary Clinton"]
+    column_names = ["num_reactions", "num_comments", "num_shares", 
+                    "num_likes", "num_loves", "num_wows", 
+                    "num_hahas", "num_sads", "num_angrys"]
+    topic_names = ["Family/Urgent", "Offence", "School Crime", 
+                    "Police/Crime/Satire", "Donald Trump", "Teenage Abortion", 
+                    "Marriage", "Crime witness", "Attack/Terrorism", "Hilary Clinton"]
     
     results_df = pd.DataFrame(index=np.arange(len(topics)), columns=column_names)
     for column in column_names:
@@ -44,26 +48,21 @@ def main():
         doc_topic = np.argmax(X_trans[i])
         topic_labels.append(np.argmax(X_trans[i]))
 
-    #visualize_cor(results_df, column_names, topic_names)
+    #visualize_cor(topic_components, topic_names)
     #visualize_mat(results_df, column_names, topic_names)
     #visualize_pca(X_trans, topic_labels)
-
     #kmeans_clustering(X_trans)
     #gmm_clustering(X_trans)
-    plot_complex(X_trans, df)
+    plot_complex(X_trans, df, topic_names)
 
-def plot_complex(X_trans, df):
+def plot_complex(X_trans, df, topic_names):
     # example data
     X = X_trans[:] - np.mean(X_trans[:])
-    variables = ["Family, Urgent", "Offence", "School crime", "Police/Crime/Satire", 
-              "Donald Trump", "Teenage Abortion", "Marriage", 
-              "Crime witness", "Attack/Terrorism", "Hillary Clinton"]
-
     ranges = [(0.0, 0.5), (0.0, 0.5), (0.0, 0.5),(0.0, 0.5), (0.0, 0.5), (0.0, 0.5), 
               (0.0, 0.5), (0.0, 0.5), (0.0, 0.5), (0.0, 0.5)]  
     # plotting
-    fig1 = plt.figure(figsize=(3, 3))
-    radar = ComplexRadar(fig1, variables, ranges)        
+    fig1 = plt.figure()
+    radar = ComplexRadar(fig1, topic_names, ranges)
 
     sentiment_value = get_sentiments(X_trans, df, 'num_loves')
     radar.plot([sentiment_value[i] for i in range(10)],  "-", lw=2, color="b", alpha=0.4, label="love")
@@ -81,6 +80,7 @@ def plot_complex(X_trans, df):
     radar.plot([sentiment_value[i] for i in range(10)],  "-", lw=2, color="Purple", alpha=0.4, label="wow")
 
     radar.ax.legend(bbox_to_anchor=(1.05, 1), loc=10, borderaxespad=0.)
+    plt.title("Complex radar graph of topics")
     plt.show()
 
 def kmeans_clustering(X):
@@ -123,24 +123,27 @@ def gmm_clustering(X):
     plt.show()
 
 
-def visualize_cor(results_df, column_names, topic_names):
+def visualize_cor(topic_components, topic_names):
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    plt.imshow(results_df.corr(), interpolation='nearest', cmap=plt.cm.Blues)
+    corr_mat = np.corrcoef(topic_components)
+    np.fill_diagonal(corr_mat, 0)
+    plt.imshow(corr_mat, interpolation='nearest', cmap=plt.cm.Blues)
     plt.colorbar()
-    ax.set_yticks(np.arange(results_df.shape[1]))
+    ax.set_yticks(np.arange(topic_components.shape[0]))
     ax.set_yticklabels(topic_names, rotation='horizontal', fontsize=10)
-    ax.set_xticks(np.arange(len(column_names)))
+    ax.set_xticks(np.arange(topic_components.shape[0]))
     ax.set_xticklabels(topic_names, rotation=70, fontsize=8)
     plt.title("Correlation Matrix of Topics")
     plt.show()
+
 
 def visualize_mat(results_df, column_names, topic_names):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     plt.imshow(results_df, interpolation='nearest', cmap=plt.cm.Blues)
     plt.colorbar()
-    ax.set_yticks(np.arange(results_df.shape[1]))
+    ax.set_yticks(np.arange(results_df.shape[1]+1))
     ax.set_yticklabels(topic_names, rotation='horizontal', fontsize=11)
     ax.set_xticks(np.arange(len(column_names)))
     ax.set_xticklabels([(i.split('_')[1]) for i in column_names], rotation=70, fontsize=11)
@@ -210,7 +213,7 @@ def fit_lda(X, n_features, n_topics, n_top_words, n_samples):
     print("\nTopics in LDA model:")
     tf_feature_names = tf_vectorizer.get_feature_names()
     topics = print_top_words(lda, tf_feature_names, n_top_words)
-    return X, topics
+    return X, topics, lda.components_
 
 def print_top_words(model, feature_names, n_top_words):
     topics = []
@@ -234,7 +237,9 @@ def get_total_sentiments(X_trans, df, sentiment):
     #print("*Total %s*" %sentiment)
     for i in range(len(total_sentiments)):
         #print("Topic %d: %.2f" %(i, total_sentiments[i] / total_num))
-        total_num_prec[i] = (np.log(total_sentiments[i]))# / total_num))
+        #total_num_prec[i] = total_sentiments[i]
+        #total_num_prec[i] = total_sentiments[i] / total_num
+        total_num_prec[i] = np.log(total_sentiments[i])
     return total_num_prec
 
 class ComplexRadar():
@@ -261,17 +266,6 @@ class ComplexRadar():
             ax.spines["polar"].set_visible(False)
             ax.set_ylim(0, 0.5)
             
-        #for i, ax in enumerate(axes):
-            #grid = np.linspace(*ranges[i], 
-            #                   num=n_ordinate_levels)
-            #gridlabel = ["{}".format(round(x,2)) for x in grid]
-            #if ranges[i][0] > ranges[i][1]:
-            #   grid = grid[::-1] # hack to invert grid
-                          # gridlabels aren't reversed
-            #gridlabel[0] = "" # clean up origin
-            #ax.set_rgrids(grid, labels=gridlabel,angle=angles[i])
-            #ax.set_rgrids(range(1, 6), angle=angles[i], labels=gridlabel)
-            #ax.set_ylim(0, 0.5)
         # variables for plotting
         self.angle = np.deg2rad(np.r_[angles, angles[0]])
         self.ranges = ranges
