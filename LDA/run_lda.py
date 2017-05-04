@@ -5,6 +5,8 @@ import pandas as pd
 from sklearn import decomposition
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import NMF, LatentDirichletAllocation
+from sklearn.cluster import KMeans
+from sklearn import mixture
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -35,7 +37,6 @@ def main():
     results_df = pd.DataFrame(index=np.arange(len(topics)), columns=column_names)
     for column in column_names:
         results_df[column] = get_total_sentiments(X_trans, df, column)
-        #print(get_total_sentiments(X_trans, df, column))
     
     # assign topics
     topic_labels = []
@@ -46,6 +47,49 @@ def main():
     #visualize_cor(results_df, column_names, topic_names)
     #visualize_mat(results_df, column_names, topic_names)
     #visualize_pca(X_trans, topic_labels)
+
+    #kmeans_clustering(X_trans)
+    gmm_clustering(X_trans)
+
+def kmeans_clustering(X):
+    klist = []
+    ilist = []
+    for k in range(1,30):
+        kmeans = KMeans(n_clusters=k, copy_x=False)
+        kmeans.fit(X)
+        klist.append(k)
+        ilist.append(kmeans.inertia_)
+        if True:
+            C, L = kmeans.cluster_centers_, kmeans.labels_
+            #plt.figure(figsize=(10,4))
+            #for i,m,n in [(1,0,1),(2,1,2),(3,0,2)]:
+                #ax=plt.subplot(1,3,i) #,aspect='equal')
+                #plt.scatter(X[:,m],X[:,n],c=L,cmap=plt.cm.rainbow, alpha=0.7, edgecolor='none');
+                #plt.scatter(C[:,m],C[:,n],c='k',marker='o',s=200,alpha=0.4,edgecolor='none');
+            #plt.show()
+    plt.figure();
+    plt.plot(klist,ilist,'o-');
+    plt.title("KMeans clustering inertia graph")
+    plt.ylabel("Inertia")
+    plt.xlabel("K (number of clusters)")
+    plt.show()
+
+
+def gmm_clustering(X):
+    scores = []
+    klist = []
+    for k in range(1,30):
+        gmm = mixture.GMM(n_components=k, covariance_type='full')
+        gmm.fit(X)
+        klist.append(k)
+        scores.append(np.mean(gmm.score(X)))
+    plt.figure();
+    plt.plot(klist,scores,'o-');
+    plt.title("GMM clustering log-likelihood graph")
+    plt.ylabel("Log Likelihood")
+    plt.xlabel("K (number of clusters)")
+    plt.show()
+
 
 def visualize_cor(results_df, column_names, topic_names):
     fig = plt.figure()
