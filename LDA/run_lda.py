@@ -49,7 +49,39 @@ def main():
     #visualize_pca(X_trans, topic_labels)
 
     #kmeans_clustering(X_trans)
-    gmm_clustering(X_trans)
+    #gmm_clustering(X_trans)
+    plot_complex(X_trans, df)
+
+def plot_complex(X_trans, df):
+    # example data
+    X = X_trans[:] - np.mean(X_trans[:])
+    variables = ["Family, Urgent", "Offence", "School crime", "Police/Crime/Satire", 
+              "Donald Trump", "Teenage Abortion", "Marriage", 
+              "Crime witness", "Attack/Terrorism", "Hillary Clinton"]
+
+    ranges = [(0.0, 0.5), (0.0, 0.5), (0.0, 0.5),(0.0, 0.5), (0.0, 0.5), (0.0, 0.5), 
+              (0.0, 0.5), (0.0, 0.5), (0.0, 0.5), (0.0, 0.5)]  
+    # plotting
+    fig1 = plt.figure(figsize=(3, 3))
+    radar = ComplexRadar(fig1, variables, ranges)        
+
+    sentiment_value = get_sentiments(X_trans, df, 'num_loves')
+    radar.plot([sentiment_value[i] for i in range(10)],  "-", lw=2, color="b", alpha=0.4, label="love")
+
+    sentiment_value = get_sentiments(X_trans, df, 'num_angrys')
+    radar.plot([sentiment_value[i] for i in range(10)],  "-", lw=2, color="Red", alpha=0.4, label="angry")
+
+    sentiment_value = get_sentiments(X_trans, df, 'num_sads')
+    radar.plot([sentiment_value[i] for i in range(10)],  "-", lw=2, color="g", alpha=0.4, label="sad")
+
+    sentiment_value = get_sentiments(X_trans, df, 'num_hahas')
+    radar.plot([sentiment_value[i] for i in range(10)],  "-", lw=2, color="pink", alpha=0.4, label="haha")
+
+    sentiment_value = get_sentiments(X_trans, df, 'num_wows')
+    radar.plot([sentiment_value[i] for i in range(10)],  "-", lw=2, color="Purple", alpha=0.4, label="wow")
+
+    radar.ax.legend(bbox_to_anchor=(1.05, 1), loc=10, borderaxespad=0.)
+    plt.show()
 
 def kmeans_clustering(X):
     klist = []
@@ -205,5 +237,87 @@ def get_total_sentiments(X_trans, df, sentiment):
         total_num_prec[i] = (np.log(total_sentiments[i]))# / total_num))
     return total_num_prec
 
+class ComplexRadar():
+    def __init__(self, fig, variables, ranges,
+                 n_ordinate_levels=6):
+        angles = np.arange(0, 360, 360./len(variables))
+
+        axes = [fig.add_axes([0.1,0.1,0.9,0.9],polar=True,
+                label = "axes{}".format(i)) 
+                for i in range(len(variables))]
+        l, text = axes[0].set_thetagrids(angles, labels=variables)
+        [txt.set_rotation(angle-90) for txt, angle 
+             in zip(text, angles)]
+        for ax in axes[1:]:
+            ax.patch.set_visible(False)
+            ax.grid("off")
+            ax.xaxis.set_visible(False)
+            #ax.set_rgrids(range(1, 6), angle=angle, labels=variables)
+            
+        labels = [ [0.0, 0.1, 0.2, 0.3, 0.4, 0.5] for i in range(10)]
+        
+        for ax, angle, label in zip(axes, angles, labels):
+            ax.set_rgrids(range(1, 6), angle=angle, labels=label)
+            ax.spines["polar"].set_visible(False)
+            ax.set_ylim(0, 0.5)
+            
+        #for i, ax in enumerate(axes):
+            #grid = np.linspace(*ranges[i], 
+            #                   num=n_ordinate_levels)
+            #gridlabel = ["{}".format(round(x,2)) for x in grid]
+            #if ranges[i][0] > ranges[i][1]:
+            #   grid = grid[::-1] # hack to invert grid
+                          # gridlabels aren't reversed
+            #gridlabel[0] = "" # clean up origin
+            #ax.set_rgrids(grid, labels=gridlabel,angle=angles[i])
+            #ax.set_rgrids(range(1, 6), angle=angles[i], labels=gridlabel)
+            #ax.set_ylim(0, 0.5)
+        # variables for plotting
+        self.angle = np.deg2rad(np.r_[angles, angles[0]])
+        self.ranges = ranges
+        self.ax = axes[0]
+    def plot(self, data, *args, **kw):
+        sdata = _scale_data(data, self.ranges)
+        self.ax.plot(self.angle, np.r_[sdata, sdata[0]], *args, **kw)
+    def fill(self, data, *args, **kw):
+        sdata = _scale_data(data, self.ranges)
+        self.ax.fill(self.angle, np.r_[sdata, sdata[0]], *args, **kw)
+
+def _scale_data(data, ranges):
+    """scales data[1:] to ranges[0],
+    inverts if the scale is reversed"""
+    for d, (y1, y2) in zip(data[1:], ranges[1:]):
+        assert (y1 <= d <= y2) or (y2 <= d <= y1)
+    x1, x2 = ranges[0]
+    d = data[0]
+    if x1 > x2:
+        d = _invert(d, (x1, x2))
+        x1, x2 = x2, x1
+    sdata = [d]
+    for d, (y1, y2) in zip(data[1:], ranges[1:]):
+        if y1 > y2:
+            d = _invert(d, (y1, y2))
+            y1, y2 = y2, y1
+        sdata.append((d-y1) / (y2-y1) 
+                     * (x2 - x1) + x1)
+    return sdata
+
+def get_sentiments(X_trans, df, sentiment):
+    num_topics = len(X_trans[0])
+    total_sentiments = [0] * num_topics
+    for i in range(len(X_trans)):
+        total_sentiments += X_trans[i] * df[sentiment][i]
+
+    total_num = np.sum(total_sentiments) + 0.0
+    sentiment_for_all_topic = np.zeros(10)
+    
+    for i in range(len(total_sentiments)):
+        sentiment_for_all_topic[i] = total_sentiments[i] / total_num
+        
+    return sentiment_for_all_topic
+
 if __name__ == '__main__':
     main()
+
+
+
