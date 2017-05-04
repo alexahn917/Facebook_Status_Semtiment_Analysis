@@ -312,6 +312,3 @@ def get_sentiments(X_trans, df, sentiment):
 
 if __name__ == '__main__':
     main()
-
-
-
