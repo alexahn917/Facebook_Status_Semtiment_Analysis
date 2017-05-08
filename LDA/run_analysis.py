@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 def main():
-    with open("../data1.csv") as f:
-        df = pd.read_csv(f, encoding='latin-1')
+    with open("../data_cnn.csv") as f:
+        df = pd.read_csv(f, encoding='latin-1', index_col=False)
     df.fillna(0, inplace=True)
 
     # get data
@@ -34,10 +34,14 @@ def main():
     column_names = ["num_reactions", "num_comments", "num_shares", 
                     "num_likes", "num_loves", "num_wows", 
                     "num_hahas", "num_sads", "num_angrys"]
+    '''
     topic_names = ["Family/Urgent", "Offence", "School Crime", 
                     "Police/Crime/Satire", "Donald Trump", "Teenage Abortion", 
                     "Marriage", "Crime witness", "Attack/Terrorism", "Hilary Clinton"]
-    
+    '''
+
+    topic_names = [("Topic: %d"%i) for i in range(10)]
+
     results_df = pd.DataFrame(index=np.arange(len(topics)), columns=column_names)
     for column in column_names:
         results_df[column] = get_total_sentiments(X_trans, df, column)
@@ -48,12 +52,12 @@ def main():
         doc_topic = np.argmax(X_trans[i])
         topic_labels.append(np.argmax(X_trans[i]))
 
-    #visualize_cor(topic_components, topic_names)
-    #visualize_mat(results_df, column_names, topic_names)
-    #visualize_pca(X_trans, topic_labels)
+    visualize_cor(topic_components, topic_names)
+    visualize_mat(results_df, column_names, topic_names)
+    visualize_pca(X_trans, topic_labels)
     #kmeans_clustering(X_trans)
     #gmm_clustering(X_trans)
-    plot_complex(X_trans, df, topic_names)
+    #plot_complex(X_trans, df, topic_names)
 
 def plot_complex(X_trans, df, topic_names):
     # example data

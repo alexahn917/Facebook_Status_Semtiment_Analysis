@@ -6,7 +6,7 @@ import time
 
 app_id = "1362223157196491"
 app_secret = "024a26239eaf3af8a61d0493dab1a402"
-page_id = "humansofnewyork"
+page_id = "cnn"
 
 access_token = app_id + "|" + app_secret
 
